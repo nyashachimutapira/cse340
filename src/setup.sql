@@ -242,3 +242,72 @@ SELECT
 FROM service_projects sp
 JOIN organization o ON sp.organization_id = o.organization_id
 ORDER BY sp.project_date;
+
+-- ============================================================================
+-- CREATE CATEGORY TABLE
+-- ============================================================================
+-- Table: category
+-- Purpose: Defines categories that can be assigned to service projects
+
+CREATE TABLE category (
+    category_id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE
+);
+
+-- ============================================================================
+-- CREATE PROJECT_CATEGORY JUNCTION TABLE
+-- ============================================================================
+-- Table: project_category
+-- Purpose: Junction table for many-to-many relationship between projects and categories
+
+CREATE TABLE project_category (
+    project_id INTEGER NOT NULL,
+    category_id INTEGER NOT NULL,
+    PRIMARY KEY (project_id, category_id),
+    FOREIGN KEY (project_id) REFERENCES service_projects(project_id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES category(category_id) ON DELETE CASCADE
+);
+
+-- ============================================================================
+-- INSERT SAMPLE CATEGORIES
+-- ============================================================================
+
+INSERT INTO category (name) VALUES 
+('Environmental'), 
+('Community Development'), 
+('Education & Mentorship'), 
+('Health & Wellness');
+
+-- ============================================================================
+-- ASSOCIATE PROJECTS WITH CATEGORIES
+-- ============================================================================
+-- Every project must be associated with at least one category
+
+INSERT INTO project_category (project_id, category_id) VALUES
+-- BrightFuture Builders Projects
+(1, 2), -- Community Center Renovation -> Community Development
+(2, 2), -- Affordable Housing Construction -> Community Development
+(3, 3), -- School Playground Infrastructure -> Education & Mentorship
+(4, 1), -- Public Park Restoration -> Environmental
+(5, 1), -- Water Conservation Initiative -> Environmental
+
+-- GreenHarvest Growers Projects
+(6, 1), -- Urban Garden Establishment -> Environmental
+(7, 3), -- Food Sustainability Workshop -> Education & Mentorship
+(8, 3), -- School Nutrition Education Program -> Education & Mentorship
+(9, 2), -- Farmers Market Setup -> Community Development
+(10, 1), -- Composting Education Program -> Environmental
+
+-- UnityServe Volunteers Projects
+(11, 4), -- Senior Companion Program -> Health & Wellness
+(12, 3), -- Youth Mentorship Initiative -> Education & Mentorship
+(13, 2), -- Community Food Bank Drive -> Community Development
+(14, 1), -- Environmental Cleanup Day -> Environmental
+(15, 4); -- Homeless Support Services -> Health & Wellness
+
+-- ============================================================================
+-- VERIFY CATEGORIES
+-- ============================================================================
+
+SELECT * FROM category;
+
