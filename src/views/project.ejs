@@ -1,0 +1,33 @@
+<%- include('partials/header') %>
+<main>
+    <h1><%= title %></h1>
+
+    <h2><%= projectDetails.title %></h2>
+    
+    <% 
+        // Format the date in a user-friendly way
+        const date = new Date(projectDetails.project_date);
+        const formattedDate = date.toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+    %>
+
+    <p><strong>Date:</strong> <%= formattedDate %></p>
+    <p><strong>Location:</strong> <%= projectDetails.location %></p>
+    <p><strong>Sponsoring Organization:</strong> <a href="/organization/<%= projectDetails.organization_id %>"><%= projectDetails.organization_name %></a></p>
+    <p>
+        <strong>Categories:</strong> 
+        <% if (categories.length === 0) { %>
+            None
+        <% } else { %>
+            <% categories.forEach(category => { %>
+                <a href="/category/<%= category.category_id %>" class="category-tag"><%= category.name %></a>
+            <% }); %>
+        <% } %>
+    </p>
+    
+    <p><strong>Description:</strong> <%= projectDetails.description %></p>
+</main>
+<%- include('partials/footer') %>

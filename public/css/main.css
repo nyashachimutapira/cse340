@@ -24,3 +24,21 @@ nav a {
 nav a:hover {
     color: #0066cc;
 }
+
+.category-tag {
+    display: inline-block;
+    background-color: #e0f2fe;
+    color: #0369a1;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    text-decoration: none;
+    font-size: 0.85em;
+    font-weight: bold;
+    margin-right: 8px;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.category-tag:hover {
+    background-color: #bae6fd;
+    color: #0284c7;
+}
