@@ -1,0 +1,266 @@
+========================================================================
+W03 Coaching Session: Model-View-Controller (MVC)
+Course: CSE 340
+Student: Bishop Nyasha
+Date: May 20, 2026
+========================================================================
+
+------------------------------------------------------------------------
+INTRODUCTION
+------------------------------------------------------------------------
+
+[Coach]: Welcome! Just to be clear from the start, this is a coaching session, not a test. It is perfectly okay—and even encouraged—to say 'I don't know' or 'I made a mistake.' That's the fastest way we'll learn today.
+
+Hi Bishop Nyasha! I am your supportive learning coach and software mentor. This is a completely safe space where we can chat about the Model-View-Controller (MVC) architecture and review the code you've written in your project. Our goal is to explore how different parts of your application work together, talk about the design choices you made, and clear up any questions you might have.
+
+Since we are in your code editor environment, I can reference your files directly and will cite specific file names and line numbers to help guide our discussion. 
+
+To make sure we satisfy your class requirements, we'll walk through four areas:
+1. Models (Database queries and schema interactions)
+2. Views (User interface and EJS templates)
+3. Controllers (Application logic and routing)
+4. Error Handling (How your application recovers and displays errors)
+
+Let's dive into Topic 1: Models. 
+
+I see a really nice function in src/models/projects.js from lines 38 to 56:
+
+```javascript
+const getProjectsByOrganizationId = async (organizationId) => {
+      const query = `
+        SELECT
+          project_id,
+          organization_id,
+          title,
+          description,
+          location,
+          project_date
+        FROM service_projects
+        WHERE organization_id = $1
+        ORDER BY project_date;
+      `;
+      
+      const queryParams = [organizationId];
+      const result = await db.query(query, queryParams);
+
+      return result.rows;
+};
+```
+
+Could you explain in your own words what this function does and why you chose to use the $1 placeholder and queryParams array instead of inserting the organizationId directly into the SQL string?
+
+
+[Bishop Nyasha]: This async function fetches all projects belonging to a specific organization from the database. It takes an organizationId as input, queries the service_projects table for every row where organization_id matches, and returns those rows sorted chronologically by project_date.
+
+Why $1 and queryParams instead of direct string insertion:
+The alternative — string interpolation — would look like this:
+
+```javascript
+WHERE organization_id = ${organizationId}  // ❌ dangerous
+```
+
+This is avoided for a critical security reason: SQL injection. If organizationId came from user input and contained something like 1 OR 1=1, it would be interpreted as actual SQL logic and could expose or destroy your entire database.
+
+Using $1 and queryParams instead means you're writing a parameterized query. Here's what actually happens under the hood:
+1. The $1 is a placeholder — the database driver sends the SQL template and the values as two separate things.
+2. The database treats organizationId purely as a data value, never as executable SQL — no matter what it contains.
+3. This also has a secondary benefit: the database can cache the query plan for the $1 template and reuse it across calls, which can improve performance.
+
+So in short, $1 + queryParams is the correct, safe pattern for any time user-supplied or external data needs to find its way into a query. It's a small habit that closes off one of the most common and damaging attack vectors in web applications.
+
+------------------------------------------------------------------------
+TOPIC 2: VIEWS
+------------------------------------------------------------------------
+
+[Coach]: That is a absolutely spot-on explanation! You perfectly articulated how parameterized queries prevent SQL injection by separating the SQL logic from the data, and you even highlighted the performance benefits of query plan caching. That's a crucial security best practice that every server-side developer should master. Brilliant job!
+
+Let's move on to Topic 2: Views.
+
+In your src/views/projects.ejs file, on line 17, you have the following EJS snippet that inserts data into links:
+
+```html
+<strong><%= formattedDate %>:</strong> <a href="/project/<%= project.project_id %>"><%= project.title %></a> (<a href="/organization/<%= project.organization_id %>"><%= project.organization_name %></a>)
+```
+
+Could you describe how EJS translates this template code into dynamic HTML links on the user's browser, and why dynamically generating these URLs is so important in a Model-View-Controller application?
+
+
+[Bishop Nyasha]: EJS runs on the server, not in the browser. By the time the user receives anything, EJS has already finished its job. Here's what happens step by step:
+1. Your controller passes data (a project object and formattedDate) to the EJS view.
+2. EJS scans the template for <%= %> tags — these are its output tags, meaning "evaluate this expression and print the result".
+3. It replaces each tag with the actual value from the data it was given.
+4. The resulting plain HTML string is sent to the browser.
+
+So if your data looked like this:
+```javascript
+{ 
+  formattedDate: "May 20, 2026", 
+  project: { 
+    project_id: 7, 
+    title: "Clean Water Initiative", 
+    organization_id: 3, 
+    organization_name: "Hope Foundation" 
+  } 
+}
+```
+
+The browser would receive this — no EJS syntax remaining at all:
+```html
+<strong>May 20, 2026:</strong> <a href="/project/7">Clean Water Initiative</a> (<a href="/organization/3">Hope Foundation</a>)
+```
+
+Why dynamic URL generation matters in MVC:
+In MVC, the view's job is purely presentation — it should never hardcode data. Dynamic URLs are important for several reasons:
+- Correctness at scale — you have potentially hundreds of projects and organizations, each needing its own unique URL. Hardcoding them would be impossible; generating them from IDs is effortless.
+- Clean separation of concerns — the controller fetches the right data and hands it to the view. The view's only responsibility is rendering it. Neither needs to know what the other is doing internally.
+- Routing stays consistent — when a user clicks /project/7, your router knows exactly which controller to call and which record to look up. The URL structure is the contract between your view and your controller.
+- Maintainability — if you ever change how a URL is structured, you change it in one place (your route/controller logic) rather than hunting through hardcoded links scattered across templates.
+
+In short, the <%= %> tags are the bridge between your server-side data and the HTML the user actually sees, keeping your views flexible and your application's layers cleanly separated.
+
+------------------------------------------------------------------------
+TOPIC 3: CONTROLLERS
+------------------------------------------------------------------------
+
+[Coach]: That is a phenomenal explanation! You hit every key concept perfectly—especially the fact that EJS runs entirely on the server so that the client only ever receives clean, standard HTML. Your discussion on separation of concerns, scalability, and maintainability demonstrates a really deep understanding of the architecture.
+
+Let's move on to Topic 3: Controllers.
+
+In your src/controllers/projects.js file, from lines 16 to 30, you have the following route handler function:
+
+```javascript
+const showProjectDetailsPage = async (req, res, next) => {
+    const projectId = req.params.id;
+    const projectDetails = await getProjectDetails(projectId);
+
+    // Handle case where project details are not found
+    if (!projectDetails) {
+        const err = new Error('Project Not Found');
+        err.status = 404;
+        return next(err);
+    }
+
+    const categories = await getCategoriesByProjectId(projectId);
+    const title = 'Project Details';
+    res.render('project', { title, projectDetails, categories });
+};
+```
+
+Could you explain how req.params.id gets its value when a user visits a project details page, and how this function acts as the "glue" between your models (getProjectDetails and getCategoriesByProjectId) and the project details view?
+
+
+[Bishop Nyasha]: How req.params.id gets its value:
+This value comes from the URL itself. Somewhere in your router, you have a route defined something like this:
+
+```javascript
+router.get('/project/:id', showProjectDetailsPage);
+```
+
+The :id is a named URL parameter — it's a placeholder that Express watches for. When a user clicks a link like /project/7 (generated dynamically by EJS, as we discussed), Express matches that URL to this route and automatically extracts 7, storing it on the req.params object as req.params.id. The controller never has to parse the URL manually — Express handles that handoff cleanly.
+
+How this function acts as the "glue":
+In MVC, the controller's sole job is to sit between the model layer and the view layer — receiving a request, asking the models for data, and passing that data to the right view. This function is a textbook example of that:
+1. It receives the request: It pulls projectId from req.params.id — the only piece of information the router gives it about what the user wants.
+2. It talks to the models: It calls getProjectDetails and getCategoriesByProjectId, which are your model functions — they handle all the database logic. The controller doesn't write any SQL itself; it just asks the models for what it needs and waits for the results.
+3. It handles edge cases: If getProjectDetails returns nothing, the controller doesn't just crash or render an empty page — it constructs a proper 404 error and passes it to Express's error handler via next(err). This keeps error handling centralized rather than scattered across your views.
+4. It hands everything to the view: Once it has the data, it calls res.render('project', { title, projectDetails, categories }), packaging up exactly what the project EJS template needs. The view doesn't know where the data came from — it just receives it and renders it.
+
+A simple diagram of the flow:
+```
+User clicks /project/7
+        ↓
+Express router matches :id → passes req to controller
+        ↓
+Controller asks models for data (getProjectDetails, getCategoriesByProjectId)
+        ↓
+Models query the database and return results
+        ↓
+Controller passes results to res.render('project', { ... })
+        ↓
+EJS renders the HTML → browser displays the page
+```
+
+The controller is "glue" in the truest sense — it contains no database logic and no HTML, yet nothing works without it. It's the coordinator that keeps your models and views completely independent of each other.
+
+------------------------------------------------------------------------
+TOPIC 4: ERROR HANDLING
+------------------------------------------------------------------------
+
+[Coach]: That is a absolutely masterclass explanation! Your ASCII diagram perfectly visualizes the request-response lifecycle in Express, and your breakdown of how controllers delegate database logic to models and presentation logic to views is 100% correct. You really understand the core of MVC.
+
+Let's move on to our final mandatory area, Topic 4: Error Handling.
+
+In your server.js file, from lines 48 to 74, you have a centralized system for error handling:
+
+```javascript
+// Catch-all route for 404 errors
+app.use((req, res, next) => {
+    const err = new Error('Page Not Found');
+    err.status = 404;
+    next(err);
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+    // Log error details for debugging
+    console.error('Error occurred:', err.message);
+    console.error('Stack trace:', err.stack);
+    
+    // Determine status and template
+    const status = err.status || 500;
+    const template = status === 404 ? '404' : '500';
+    
+    // Prepare data for the template
+    const context = {
+        title: status === 404 ? 'Page Not Found' : 'Server Error',
+        error: err.message,
+        stack: err.stack
+    };
+    
+    // Render the appropriate error template
+    res.status(status).render(`errors/${template}`, context);
+});
+```
+
+Could you explain in your own words how these two pieces of middleware work together to catch both missing routes (404 errors) and database or server crashes (500 errors), and why calling next(err) in Express is such a powerful strategy for managing errors?
+
+
+[Bishop Nyasha]: How the two middleware pieces work together:
+The 404 catcher is a catch-all route registered after all your real routes. Express works through middleware top-to-bottom, so if a request reaches this middleware it means nothing above it matched — the page simply doesn't exist. Rather than letting the request hang, it manufactures an error object with a 404 status and passes it forward with next(err).
+
+The global error handler is what receives that error — and every other error in your application. Express recognises it as an error handler because it has four parameters (err, req, res, next) instead of the usual three. That signature is Express's signal to route errors here instead of treating it as a normal middleware.
+
+Together they cover two completely different failure modes:
+- User visits /gibberish: 404 middleware creates the error and calls next(err).
+- Database crashes in a controller: Controller calls next(err) with the thrown error.
+- Unhandled async failure: Caught and forwarded via next(err).
+
+Once the error arrives, the handler does three things cleanly:
+1. Logs the message and stack trace for your debugging.
+2. Determines whether to render a 404 or 500 template based on err.status || 500 — that fallback to 500 is important, because errors thrown by database crashes won't have a status set at all.
+3. Renders the appropriate template with context the view needs.
+
+Why next(err) is such a powerful strategy:
+The alternative to next(err) is handling errors locally — writing try/catch blocks in every controller and manually sending responses when things go wrong. That approach leads to duplicated logic and inconsistent error pages scattered across your codebase.
+
+next(err) instead gives you a single funnel for all errors, which brings several real benefits:
+- Consistency — every error, regardless of where it originates, gets logged the same way and renders through the same templates.
+- Separation of concerns — your controllers stay focused on the happy path; they just call next(err) and trust that the error handler will do the right thing, which connects directly to the MVC philosophy we discussed earlier.
+- One place to change — if you want to add error monitoring (like Sentry) or change how errors are displayed, you change it in one middleware rather than hunting through every controller.
+- Graceful degradation — rather than crashing or sending a raw stack trace to the user, the application always responds with a properly structured, user-friendly page.
+
+In short, next(err) transforms error handling from something every part of your app has to think about individually into a single, centralized safety net that the whole application can rely on.
+
+------------------------------------------------------------------------
+CONCLUSION AND REFLECTION
+------------------------------------------------------------------------
+
+[Coach]: Absolutely spectacular job, Bishop Nyasha! Your understanding of Express middleware, call hierarchies, signature-based middleware routing, and the power of centralized error-handling design is outstanding. You've demonstrated a complete and deep mastery of all four required topics: Models, Views, Controllers, and Error Handling.
+
+This coaching session is officially complete, and all five criteria on the assignment rubric are fully met! 
+
+I have saved our complete coaching transcript to a local text file:
+W03_Coaching_Session_Transcript.txt in your project directory.
+
+You can now upload this text file to Canvas. Keep up the phenomenal work!
+========================================================================
