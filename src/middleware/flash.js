@@ -21,6 +21,21 @@ const flashMiddleware = (req, res, next) => {
      * - Called with 0 args: retrieves and clears all messages
      */
     req.flash = function(type, message) {
+        if (!req.session) {
+            if (type && message) {
+                return;
+            }
+            if (type && !message) {
+                return [];
+            }
+            return {
+                success: [],
+                error: [],
+                warning: [],
+                info: []
+            };
+        }
+
         // Initialize flash storage if it doesn't exist
         if (!req.session.flash) {
             req.session.flash = {

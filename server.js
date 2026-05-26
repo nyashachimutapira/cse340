@@ -14,11 +14,25 @@ const PORT = process.env.PORT || 3000;
 
 // Load session secret from environment variables
 const SESSION_SECRET = process.env.SESSION_SECRET;
+const DB_URL = process.env.DB_URL;
+
+if (!SESSION_SECRET) {
+    console.error('FATAL: SESSION_SECRET environment variable is required.');
+    process.exit(1);
+}
+
+if (!DB_URL) {
+    console.error('FATAL: DB_URL environment variable is required.');
+    process.exit(1);
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+// Required when running behind Render's HTTPS proxy (for sessions/cookies)
+app.set('trust proxy', 1);
 
 /**
   * Configure Express middleware
@@ -29,7 +43,12 @@ app.use(session({
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: true,
-    cookie: { maxAge: 60 * 60 * 1000 } // Session expires after 1 hour of inactivity
+    cookie: {
+        maxAge: 60 * 60 * 1000, // Session expires after 1 hour of inactivity
+        secure: NODE_ENV === 'production',
+        httpOnly: true,
+        sameSite: 'lax'
+    }
 }));
 
 // Use flash message middleware
@@ -90,7 +109,12 @@ app.use((err, req, res, next) => {
     };
     
     // Render the appropriate error template
-    res.status(status).render(`errors/${template}`, context);
+    res.status(status).render(`errors/${template}`, context, (renderErr) => {
+        if (renderErr) {
+            console.error('Error rendering error page:', renderErr.message);
+            res.status(status).send(status === 404 ? 'Page Not Found' : 'Server Error');
+        }
+    });
 });
 
 app.listen(PORT, async () => {
