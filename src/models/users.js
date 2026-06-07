@@ -93,7 +93,25 @@ const createUserWithRole = async (name, email, passwordHash, roleName) => {
     return result.rows[0].user_id;
 };
 
+const ensureDatabaseSchemaAvailable = async () => {
+    const query = `
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_name IN ('roles', 'users')
+    `;
+
+    const result = await db.query(query);
+    const tables = result.rows.map((row) => row.table_name);
+
+    if (!tables.includes('roles') || !tables.includes('users')) {
+        throw new Error('Database schema is not initialized. Run src/setup.sql to create the users and roles tables.');
+    }
+};
+
 const ensureAdminUserExists = async () => {
+    await ensureDatabaseSchemaAvailable();
+
     const adminEmail = 'admin@example.com';
     const adminName = 'Admin User';
     const adminPassword = 'cse340!';

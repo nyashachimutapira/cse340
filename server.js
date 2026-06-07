@@ -133,6 +133,8 @@ app.listen(PORT, async () => {
     console.log(`Server is running at http://127.0.0.1:${PORT}`);
     console.log(`Environment: ${NODE_ENV}`);
   } catch (error) {
-    console.error('Error connecting to the database:', error);
+    console.error('Startup error:', error.message || error);
+    console.error('If your database schema is not created, run the SQL schema setup file before starting the app.');
+    process.exit(1);
   }
 });
