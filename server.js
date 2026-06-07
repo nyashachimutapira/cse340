@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 import session from 'express-session';
 import { testConnection } from './src/models/db.js';
+import { ensureAdminUserExists } from './src/models/users.js';
 import router from './src/routes.js';
 import flash from './src/middleware/flash.js';
 
@@ -75,8 +76,16 @@ app.use((req, res, next) => {
     next(); // Pass control to the next middleware or route
 });
 
-// Middleware to make NODE_ENV available to all templates
+// Middleware to make NODE_ENV, login state, and user data available to all templates
 app.use((req, res, next) => {
+    res.locals.isLoggedIn = false;
+    res.locals.user = null;
+
+    if (req.session && req.session.user) {
+        res.locals.isLoggedIn = true;
+        res.locals.user = req.session.user;
+    }
+
     res.locals.NODE_ENV = NODE_ENV;
     next();
 });
@@ -120,6 +129,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, async () => {
   try {
     await testConnection();
+    await ensureAdminUserExists();
     console.log(`Server is running at http://127.0.0.1:${PORT}`);
     console.log(`Environment: ${NODE_ENV}`);
   } catch (error) {
