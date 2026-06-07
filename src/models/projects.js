@@ -159,6 +159,78 @@ const updateProject = async (projectId, title, description, location, date, orga
     return result.rows[0].project_id;
 };
 
+/**
+ * Adds a user as a volunteer for a specific project.
+ * 
+ * @param {number} projectId - ID of the project
+ * @param {number} userId - ID of the user
+ */
+const addVolunteer = async (projectId, userId) => {
+    const query = `
+        INSERT INTO project_volunteer (project_id, user_id)
+        VALUES ($1, $2)
+        ON CONFLICT DO NOTHING;
+    `;
+    await db.query(query, [projectId, userId]);
+};
+
+/**
+ * Removes a user as a volunteer from a specific project.
+ * 
+ * @param {number} projectId - ID of the project
+ * @param {number} userId - ID of the user
+ */
+const removeVolunteer = async (projectId, userId) => {
+    const query = `
+        DELETE FROM project_volunteer
+        WHERE project_id = $1 AND user_id = $2;
+    `;
+    await db.query(query, [projectId, userId]);
+};
+
+/**
+ * Retrieves all projects that a specific user has volunteered for.
+ * 
+ * @param {number} userId - ID of the user
+ * @returns {Promise<Array>} List of projects
+ */
+const getProjectsByVolunteer = async (userId) => {
+    const query = `
+        SELECT 
+            sp.project_id, 
+            sp.organization_id, 
+            sp.title, 
+            sp.description, 
+            sp.location, 
+            sp.project_date,
+            o.name as organization_name
+        FROM service_projects sp
+        JOIN project_volunteer pv ON sp.project_id = pv.project_id
+        JOIN organization o ON sp.organization_id = o.organization_id
+        WHERE pv.user_id = $1
+        ORDER BY sp.project_date ASC;
+    `;
+    const result = await db.query(query, [userId]);
+    return result.rows;
+};
+
+/**
+ * Checks if a specific user has volunteered for a project.
+ * 
+ * @param {number} projectId - ID of the project
+ * @param {number} userId - ID of the user
+ * @returns {Promise<boolean>} True if the user has volunteered, false otherwise
+ */
+const isUserVolunteering = async (projectId, userId) => {
+    const query = `
+        SELECT 1 
+        FROM project_volunteer
+        WHERE project_id = $1 AND user_id = $2;
+    `;
+    const result = await db.query(query, [projectId, userId]);
+    return result.rows.length > 0;
+};
+
 // Export the model functions
 export { 
     getAllProjects, 
@@ -167,5 +239,9 @@ export {
     getProjectDetails,
     getProjectsByCategoryId,
     createProject,
-    updateProject
+    updateProject,
+    addVolunteer,
+    removeVolunteer,
+    getProjectsByVolunteer,
+    isUserVolunteering
 };

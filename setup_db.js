@@ -25,6 +25,7 @@ async function main() {
         
         // Drop tables first to ensure a clean run
         const dropSql = `
+            DROP TABLE IF EXISTS project_volunteer CASCADE;
             DROP TABLE IF EXISTS project_category CASCADE;
             DROP TABLE IF EXISTS category CASCADE;
             DROP TABLE IF EXISTS service_projects CASCADE;

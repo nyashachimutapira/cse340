@@ -7,6 +7,44 @@
     <p>Name: <%= name %></p>
     <p>Username: <%= email %></p>
 
+    <hr>
+    <h3>My Volunteered Projects</h3>
+    <% if (volunteeredProjects && volunteeredProjects.length > 0) { %>
+        <table class="dashboard-table">
+            <thead>
+                <tr>
+                    <th>Project Title</th>
+                    <th>Date</th>
+                    <th>Location</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% volunteeredProjects.forEach(project => { %>
+                    <% 
+                        const date = new Date(project.project_date);
+                        const formattedDate = date.toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric' 
+                        });
+                    %>
+                    <tr>
+                        <td><a href="/project/<%= project.project_id %>"><%= project.title %></a></td>
+                        <td><%= formattedDate %></td>
+                        <td><%= project.location %></td>
+                        <td>
+                            <a href="/project/unvolunteer/<%= project.project_id %>?from=dashboard" class="btn btn-danger-small">Remove</a>
+                        </td>
+                    </tr>
+                <% }); %>
+            </tbody>
+        </table>
+    <% } else { %>
+        <p>You have not volunteered for any service projects yet.</p>
+        <p><a href="/projects" class="btn btn-primary-small">Browse Upcoming Projects</a></p>
+    <% } %>
+
     <% if (user && user.role_name === 'admin') { %>
         <hr>
         <h3>Admin Controls</h3>

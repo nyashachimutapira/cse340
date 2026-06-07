@@ -35,5 +35,18 @@
     </p>
     
     <p><strong>Description:</strong> <%= projectDetails.description %></p>
+
+    <% if (isLoggedIn) { %>
+        <div class="volunteer-card">
+            <h3>Volunteering</h3>
+            <% if (isVolunteering) { %>
+                <p class="volunteer-status success">✓ You are volunteering for this project!</p>
+                <p><a href="/project/unvolunteer/<%= projectDetails.project_id %>" class="btn btn-danger">Remove yourself as a volunteer</a></p>
+            <% } else { %>
+                <p class="volunteer-status prompt">Interested in helping out with this project?</p>
+                <p><a href="/project/volunteer/<%= projectDetails.project_id %>" class="btn btn-primary">Volunteer for this project</a></p>
+            <% } %>
+        </div>
+    <% } %>
 </main>
 <%- include('partials/footer') %>

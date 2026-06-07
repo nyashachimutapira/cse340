@@ -367,3 +367,23 @@ SELECT
 FROM users u
 LEFT JOIN roles r ON u.role_id = r.role_id;
 
+-- ============================================================================
+-- CREATE PROJECT_VOLUNTEER JUNCTION TABLE
+-- ============================================================================
+-- Table: project_volunteer
+-- Purpose: Junction table for many-to-many relationship between projects and user volunteers
+
+CREATE TABLE project_volunteer (
+    project_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    PRIMARY KEY (project_id, user_id),
+    FOREIGN KEY (project_id) REFERENCES service_projects(project_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+-- ============================================================================
+-- VERIFY PROJECT_VOLUNTEER TABLE
+-- ============================================================================
+
+SELECT * FROM project_volunteer;
+
